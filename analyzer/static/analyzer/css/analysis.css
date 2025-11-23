@@ -339,6 +339,57 @@ tbody td a:hover {
     color: white;
 }
 
+/* Table Data - Clean, readable text without badges */
+tbody .data-value {
+    font-weight: 500;
+    color: var(--gray-800);
+}
+
+tbody .data-value.orange {
+    color: var(--accent-orange-dark);
+}
+
+tbody .data-value.blue {
+    color: var(--primary-700);
+}
+
+tbody .data-value.green {
+    color: var(--accent-green-dark);
+}
+
+tbody .data-value.red {
+    color: var(--accent-red-dark);
+}
+
+/* Override Materialize chip styling in tables */
+tbody td .chip {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    line-height: inherit !important;
+    border-radius: 0 !important;
+    font-weight: 500;
+    color: var(--gray-800);
+}
+
+tbody td .chip.orange {
+    color: var(--accent-orange-dark) !important;
+}
+
+tbody td .chip.blue {
+    color: var(--primary-700) !important;
+}
+
+tbody td .chip.green {
+    color: var(--accent-green-dark) !important;
+}
+
+tbody td .chip.red {
+    color: var(--accent-red-dark) !important;
+}
+
 /* Score Bar (for Low Engagement) */
 .score-bar-container {
     width: 100%;
