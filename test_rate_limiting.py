@@ -22,10 +22,10 @@ RATE_LIMIT = 10  # Expected rate limit per minute
 def test_rate_limiting():
     """Test rate limiting by sending multiple requests"""
     print(f"Testing rate limiting on {API_ENDPOINT}")
-    print(f"Rate limit: {RATE_LIMIT} requests per minute")
+    print(f"Rate limit: {RATE_LIMIT} requests per minute (per IP address)")
     print(f"Sending {NUM_REQUESTS} requests...\n")
 
-    # Create a session to maintain cookies
+    # Create a session to maintain cookies (not required for rate limiting, but good practice)
     session = requests.Session()
 
     # Results tracking

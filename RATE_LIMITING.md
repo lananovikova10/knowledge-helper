@@ -45,7 +45,7 @@ Rate limiting is applied using the `@ratelimit` decorator:
 ```python
 from django_ratelimit.decorators import ratelimit
 
-@ratelimit(key='session', rate='10/m', method='POST')
+@ratelimit(key='user_or_ip', rate='10/m', method='POST')
 def analyze_stale_content(request):
     """API endpoint with rate limiting"""
     # ... endpoint logic
@@ -53,10 +53,10 @@ def analyze_stale_content(request):
 
 ### Parameters Explained
 
-- **`key='session'`**: Rate limiting is tracked per user session
-  - Each user session gets its own rate limit counter
-  - Different users don't affect each other's limits
-  - Anonymous sessions are tracked separately
+- **`key='user_or_ip'`**: Rate limiting is tracked per authenticated user or IP address
+  - For authenticated users: Each user gets their own rate limit counter
+  - For anonymous users: Rate limiting is per IP address
+  - This provides fair resource allocation while preventing abuse
 
 - **`rate='10/m'`**: 10 requests per minute
   - Users can make up to 10 requests per minute
@@ -169,18 +169,29 @@ To adjust the rate limit, modify the decorator in `analyzer/views.py`:
 
 ### Different Rate Limit Keys
 
-You can change how rate limits are tracked:
+You can change how rate limits are tracked using built-in key types:
 
 ```python
-# Per IP address (stricter - shared across all users from same IP)
+# Per IP address (stricter - all requests from same IP share the limit)
 @ratelimit(key='ip', rate='10/m', method='POST')
 
-# Per authenticated user (requires Django authentication)
+# Per authenticated user only (requires Django authentication)
 @ratelimit(key='user', rate='10/m', method='POST')
 
-# Custom key function
-def get_rate_limit_key(request):
-    return request.META.get('HTTP_X_API_KEY')
+# Per user or IP (default - per user if authenticated, otherwise per IP)
+@ratelimit(key='user_or_ip', rate='10/m', method='POST')
+
+# Per HTTP header value
+@ratelimit(key='header:x-api-key', rate='10/m', method='POST')
+
+# Per GET/POST parameter
+@ratelimit(key='get:client_id', rate='10/m', method='POST')
+@ratelimit(key='post:username', rate='10/m', method='POST')
+
+# Custom key function (must be callable)
+def get_rate_limit_key(group, request):
+    # Return a string to use as the rate limit key
+    return request.META.get('HTTP_X_API_KEY', 'anonymous')
 
 @ratelimit(key=get_rate_limit_key, rate='10/m', method='POST')
 ```

@@ -83,7 +83,7 @@ def stale_content(request):
     return render(request, 'analyzer/stale_content.html', context)
 
 
-@ratelimit(key='session', rate='10/m', method='POST')
+@ratelimit(key='user_or_ip', rate='10/m', method='POST')
 def analyze_stale_content(request):
     """API endpoint to perform analysis"""
     if request.method != 'POST':
@@ -159,7 +159,7 @@ def low_engagement(request):
     return render(request, 'analyzer/low_engagement.html', context)
 
 
-@ratelimit(key='session', rate='10/m', method='POST')
+@ratelimit(key='user_or_ip', rate='10/m', method='POST')
 def analyze_low_engagement(request):
     """API endpoint to perform low engagement analysis"""
     if request.method != 'POST':
@@ -239,7 +239,7 @@ def duplicates(request):
     return render(request, 'analyzer/duplicates.html', context)
 
 
-@ratelimit(key='session', rate='10/m', method='POST')
+@ratelimit(key='user_or_ip', rate='10/m', method='POST')
 def analyze_duplicates(request):
     """API endpoint to perform duplicate detection"""
     if request.method != 'POST':
