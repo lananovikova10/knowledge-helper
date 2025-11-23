@@ -5,21 +5,33 @@ A helper service for knowledge base maintainers that leverages both documented a
 
 ## Core Features
 
-### 1. Stale Content Detection
+### 1. Stale Content Detection ✅ COMPLETED
 **Objective**: Identify articles that haven't been updated for a long time
-- Track last update timestamps for all articles
-- Configurable threshold for "stale" articles (e.g., 6 months, 1 year)
-- Generate reports of articles needing review
-- Sort by last update date (oldest first)
+- ✅ Track last update timestamps for all articles
+- ✅ Configurable threshold for "stale" articles (e.g., 6 months, 1 year)
+- ✅ Generate reports of articles needing review
+- ✅ Sort by last update date (oldest first)
+- ✅ CLI interface with table/JSON/CSV output
+- ✅ Web interface with Material Design
+- ✅ Interactive sorting and filtering
 
-### 2. Low Engagement Analysis
+**Status**: Fully implemented in both CLI and Web interfaces
+
+### 2. Low Engagement Analysis ✅ COMPLETED
 **Objective**: Surface articles with low view counts
-- Collect view statistics for all articles
-- Identify articles below view count threshold
-- Consider article age when determining "low views"
-- Flag potentially irrelevant or poorly discoverable content
+- ✅ Collect view statistics for all articles (already fetched)
+- ✅ Identify articles below view count threshold
+- ✅ Consider article age when determining "low views"
+- ✅ Flag potentially irrelevant or poorly discoverable content
+- ✅ Age-normalized scoring system (views per day)
+- ✅ CLI interface with table/JSON/CSV output
+- ✅ Web interface with Material Design
+- ✅ Interactive sorting and filtering
+- ✅ Color-coded engagement scores (red/orange/green)
 
-### 3. Duplicate Detection
+**Status**: Fully implemented in both CLI and Web interfaces
+
+### 3. Duplicate Detection 🔲 TODO
 **Objective**: Find possible duplicate articles
 - Text similarity analysis using:
   - Title comparison (exact and fuzzy matching)
@@ -28,14 +40,18 @@ A helper service for knowledge base maintainers that leverages both documented a
 - Generate confidence scores for duplicates
 - Present side-by-side comparison of potential duplicates
 
-### 4. Article Statistics Dashboard
+**Status**: Not started
+
+### 4. Article Statistics Dashboard 🔲 TODO
 **Objective**: Provide sortable article statistics per KB project
-- View counts per article
-- Last update dates
-- Author information
-- Article status (published, draft, archived)
-- Sort capabilities: views, date, title, author
-- Export capabilities (CSV, JSON)
+- ✅ View counts per article (available in stale content)
+- ✅ Last update dates (available in stale content)
+- 🔲 Author information
+- 🔲 Article status (published, draft, archived)
+- ✅ Sort capabilities: views, date, title (in web interface)
+- ✅ Export capabilities (CSV, JSON in CLI)
+
+**Status**: Partially implemented, needs dedicated view
 
 ## Technical Architecture
 

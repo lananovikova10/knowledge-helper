@@ -9,6 +9,7 @@ from tabulate import tabulate
 from .config import Config
 from .api.client import YouTrackClient, YouTrackAPIError
 from .analyzers.stale_content import StaleContentAnalyzer
+from .analyzers.low_engagement import LowEngagementAnalyzer
 
 
 def format_table_output(report):
@@ -165,6 +166,118 @@ def cmd_stale_content(args, config: Config):
     return 0
 
 
+def cmd_low_engagement(args, config: Config):
+    """Handle low-engagement command"""
+    # Initialize API client
+    client = YouTrackClient(config.youtrack_base_url, config.youtrack_token)
+
+    # Test connection
+    print("Testing connection to YouTrack...")
+    if not client.test_connection():
+        print("ERROR: Failed to connect to YouTrack. Please check your credentials.")
+        return 1
+
+    print("✓ Connected successfully\n")
+
+    # Get parameters from args
+    score_threshold = args.score if hasattr(args, 'score') and args.score else 1.0
+    min_age_days = args.min_age if args.min_age else 7
+
+    # Initialize analyzer
+    analyzer = LowEngagementAnalyzer(client, score_threshold=score_threshold, min_age_days=min_age_days)
+
+    # Run analysis
+    try:
+        report = analyzer.analyze(args.project_id, batch_size=config.batch_size)
+    except YouTrackAPIError as e:
+        print(f"ERROR: {e}")
+        return 1
+
+    # Display summary
+    print(f"\n{'='*70}")
+    print(f"Low Engagement Analysis Report")
+    print(f"{'='*70}")
+    print(f"Project ID: {report.project_id}")
+    print(f"Score threshold: ≤ {report.score_threshold} views/day")
+    print(f"Minimum age: {report.min_age_days} days (filters out very new articles)")
+    print(f"Generated: {report.generated_at.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"\nTotal articles: {report.total_articles}")
+    print(f"Low engagement articles: {report.low_engagement_count} ({report.low_engagement_percentage:.1f}%)")
+    print(f"{'='*70}\n")
+
+    # Format output
+    output_format = args.format if args.format else config.output_format
+
+    if not report.low_engagement_articles:
+        print("✓ No low engagement articles found!")
+        return 0
+
+    # Prepare table data
+    headers = ["ID", "Title", "Views", "Days Old", "Score", "Last Updated"]
+    rows = []
+
+    for article in report.get_sorted_articles(sort_by='views'):
+        last_update = article.updated if article.updated else article.created
+        engagement_score = analyzer.get_engagement_score(article)
+        rows.append([
+            article.id,
+            article.summary[:60] + "..." if len(article.summary) > 60 else article.summary,
+            article.view_count,
+            article.days_since_update(),
+            engagement_score,
+            last_update.strftime("%Y-%m-%d")
+        ])
+
+    if output_format == "json":
+        import json
+        data = {
+            "project_id": report.project_id,
+            "score_threshold": report.score_threshold,
+            "min_age_days": report.min_age_days,
+            "total_articles": report.total_articles,
+            "low_engagement_count": report.low_engagement_count,
+            "low_engagement_percentage": round(report.low_engagement_percentage, 2),
+            "generated_at": report.generated_at.isoformat(),
+            "articles": [
+                {
+                    "id": article.id,
+                    "summary": article.summary,
+                    "view_count": article.view_count,
+                    "days_since_update": article.days_since_update(),
+                    "engagement_score": analyzer.get_engagement_score(article),
+                    "last_update": (article.updated if article.updated else article.created).isoformat()
+                }
+                for article in report.get_sorted_articles()
+            ]
+        }
+        output = json.dumps(data, indent=2)
+    elif output_format == "csv":
+        import csv
+        from io import StringIO
+        output_io = StringIO()
+        writer = csv.writer(output_io)
+        writer.writerow(headers)
+        writer.writerows(rows)
+        output = output_io.getvalue()
+    else:
+        output = tabulate(rows, headers=headers, tablefmt="grid")
+
+    # Display or save output
+    if args.output:
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        with open(args.output, 'w') as f:
+            f.write(output)
+        print(f"\nReport saved to: {args.output}")
+        print("\nPreview:")
+        print(tabulate(rows[:5], headers=headers, tablefmt="grid"))
+        if len(rows) > 5:
+            print(f"... and {len(rows) - 5} more articles (see full report in file)")
+    else:
+        print(output)
+
+    return 0
+
+
 def cmd_test_connection(args, config: Config):
     """Handle test-connection command"""
     print("Testing connection to YouTrack...")
@@ -253,6 +366,35 @@ Configuration:
         help="Save report to file instead of printing"
     )
 
+    # Low engagement command
+    engagement_parser = subparsers.add_parser(
+        "low-engagement",
+        help="Analyze articles with low engagement (views per day)"
+    )
+    engagement_parser.add_argument(
+        "project_id",
+        help="YouTrack project ID (e.g., HE for Help)"
+    )
+    engagement_parser.add_argument(
+        "--score",
+        type=float,
+        help="Engagement score threshold in views/day (default: 1.0). Articles with score ≤ this are considered low engagement."
+    )
+    engagement_parser.add_argument(
+        "--min-age",
+        type=int,
+        help="Minimum age in days to include articles (default: 7). Filters out very new articles."
+    )
+    engagement_parser.add_argument(
+        "--format",
+        choices=["table", "json", "csv"],
+        help="Output format (default: table)"
+    )
+    engagement_parser.add_argument(
+        "--output",
+        help="Save report to file instead of printing"
+    )
+
     # Test connection command
     test_parser = subparsers.add_parser(
         "test-connection",
@@ -285,6 +427,8 @@ Configuration:
     # Route to appropriate command handler
     if args.command == "stale-content":
         return cmd_stale_content(args, config)
+    elif args.command == "low-engagement":
+        return cmd_low_engagement(args, config)
     elif args.command == "test-connection":
         return cmd_test_connection(args, config)
 
