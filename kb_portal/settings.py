@@ -80,6 +80,15 @@ DATABASES = {
     }
 }
 
+# Cache configuration for rate limiting
+# https://docs.djangoproject.com/en/5.2/topics/cache/
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -126,3 +135,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Session settings - store tokens in session
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours
+
+# Rate limiting settings
+RATELIMIT_ENABLE = True  # Set to False to disable rate limiting (useful for testing)
+RATELIMIT_USE_CACHE = 'default'  # Use Django cache framework for rate limiting
