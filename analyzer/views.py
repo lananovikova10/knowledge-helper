@@ -287,6 +287,7 @@ def analyze_duplicates(request):
             'articles_with_duplicates': report.articles_with_duplicates,
             'generated_at': report.generated_at.isoformat(),
             'duplicate_pairs': pairs_data,
+            'youtrack_base_url': youtrack_url.rstrip('/api').rstrip('/'),
         }
 
         return JsonResponse(response_data)
