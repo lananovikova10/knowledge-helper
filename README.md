@@ -1,6 +1,23 @@
 # YouTrack Knowledge Base Helper
 
-A CLI tool for knowledge base maintainers to analyze and maintain YouTrack KB articles. Currently supports stale content detection with plans for additional features.
+A comprehensive tool for knowledge base maintainers to analyze and maintain YouTrack KB articles. Available as both a **CLI tool** and a **web application** with Material Design interface.
+
+## 🎨 Two Interfaces Available
+
+### 1. **Web Application** (NEW!)
+- Modern Material Design interface
+- User-friendly forms and interactive tables
+- Real-time statistics dashboard
+- Sortable results with visual indicators
+- Session-based credential management
+
+👉 **[See Web App Documentation](WEB_APP_README.md)**
+
+### 2. **Command Line Interface**
+- Fast and scriptable
+- Multiple output formats (table, JSON, CSV)
+- Perfect for automation and CI/CD
+- File-based configuration
 
 ## Features
 
@@ -9,7 +26,8 @@ A CLI tool for knowledge base maintainers to analyze and maintain YouTrack KB ar
 - Track last update timestamps for all articles
 - Configurable threshold for "stale" articles (default: 180 days)
 - Generate reports sorted by last update date (oldest first)
-- Multiple output formats: table, JSON, CSV
+- View counts for each article
+- Multiple output formats: web interface, table, JSON, CSV
 
 ### 🚧 Coming Soon
 - Low engagement analysis (articles with low view counts)
@@ -89,6 +107,32 @@ The script will:
 ```bash
 # Make sure virtual environment is activated (you should see (venv) in your prompt)
 python kb-helper.py test-connection
+```
+
+## 🚀 Which Interface Should You Use?
+
+### Use the **Web Application** if you:
+- Prefer a visual, point-and-click interface
+- Want interactive sorting and filtering
+- Need to share access with team members
+- Like real-time statistics dashboards
+
+**Start the web app:**
+```bash
+python manage.py migrate
+python manage.py runserver
+# Visit http://localhost:8000
+```
+
+### Use the **CLI** if you:
+- Need to automate analysis (scripts, cron jobs)
+- Want to export reports to files (JSON, CSV)
+- Prefer command-line workflows
+- Need to integrate with CI/CD pipelines
+
+**Use the CLI:**
+```bash
+python kb-helper.py stale-content YOUR_PROJECT_ID
 ```
 
 ## Usage

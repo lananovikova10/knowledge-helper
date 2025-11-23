@@ -41,6 +41,14 @@ data/
 cache/
 *.db
 *.sqlite
+*.sqlite3
+db.sqlite3
+
+# Django
+staticfiles/
+media/
+*.pyc
+local_settings.py
 
 # Reports
 reports/
