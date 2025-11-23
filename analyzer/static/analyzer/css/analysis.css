@@ -1,0 +1,488 @@
+/* ==========================================================================
+   Analysis Pages - Modern Styles (Stale Content & Low Engagement)
+   ========================================================================== */
+
+/* Page Header */
+.analysis-header {
+    text-align: center;
+    padding: var(--spacing-2xl) 0 var(--spacing-xl);
+}
+
+.analysis-header h3 {
+    font-size: 2.25rem;
+    font-weight: 300;
+    color: var(--primary-800);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+}
+
+.analysis-header .header-icon {
+    font-size: 2.5rem;
+    color: var(--primary-500);
+}
+
+.analysis-header .flow-text {
+    font-size: 1.125rem;
+    color: var(--gray-600);
+    font-weight: 300;
+}
+
+/* Analysis Form Card */
+.form-card {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    background: white;
+    overflow: hidden;
+    border-top: 4px solid var(--primary-500);
+}
+
+.form-card .card-content {
+    padding: var(--spacing-xl);
+}
+
+.form-card .card-title {
+    font-size: 1.5rem !important;
+    font-weight: 500 !important;
+    color: var(--primary-700) !important;
+    margin-bottom: var(--spacing-xl) !important;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.form-card .input-field {
+    margin-bottom: var(--spacing-xl);
+}
+
+.form-card .card-action {
+    background-color: var(--gray-50);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-top: 1px solid var(--gray-200);
+    text-align: right;
+}
+
+/* Statistics Cards */
+.stats-row {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.stat-card {
+    text-align: center;
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+    background: white;
+    height: 100%;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: currentColor;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.stat-card .stat-icon {
+    font-size: 3rem;
+    opacity: 0.2;
+    margin-bottom: var(--spacing-sm);
+    display: block;
+}
+
+.stat-number {
+    font-size: 3rem;
+    font-weight: 300;
+    line-height: var(--leading-none);
+    margin: var(--spacing-md) 0;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.75px;
+    color: var(--gray-600);
+    display: block;
+}
+
+/* Stat Card Color Variants */
+.stat-card-blue {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: var(--primary-700);
+}
+
+.stat-card-blue::before {
+    background: var(--primary-500);
+}
+
+.stat-card-orange {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    color: var(--accent-orange-dark);
+}
+
+.stat-card-orange::before {
+    background: var(--accent-orange);
+}
+
+.stat-card-red {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    color: var(--accent-red-dark);
+}
+
+.stat-card-red::before {
+    background: var(--accent-red);
+}
+
+.stat-card-teal {
+    background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+    color: var(--accent-teal-dark);
+}
+
+.stat-card-teal::before {
+    background: var(--accent-teal);
+}
+
+.stat-card-green {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: var(--accent-green-dark);
+}
+
+.stat-card-green::before {
+    background: var(--accent-green);
+}
+
+.stat-card-purple {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    color: var(--accent-purple-dark);
+}
+
+.stat-card-purple::before {
+    background: var(--accent-purple);
+}
+
+/* Loading Section */
+#loadingSection {
+    text-align: center;
+    padding: var(--spacing-3xl) 0;
+}
+
+#loadingSection .preloader-wrapper {
+    margin: 0 auto var(--spacing-lg);
+}
+
+#loadingSection .flow-text {
+    color: var(--gray-600);
+    font-weight: 300;
+}
+
+/* Results Section */
+#resultsSection {
+    animation: fadeIn var(--transition-slow);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Table Container */
+.table-card {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    background: white;
+    overflow: hidden;
+}
+
+.table-card .card-content {
+    padding: var(--spacing-xl);
+}
+
+.table-card .card-title {
+    font-size: 1.25rem !important;
+    font-weight: 500 !important;
+    color: var(--primary-700) !important;
+    margin-bottom: var(--spacing-lg) !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Export Buttons */
+.export-buttons {
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.export-buttons .btn {
+    border-radius: var(--radius-md);
+    text-transform: none;
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Table Styling */
+table {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+thead {
+    background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-800) 100%);
+}
+
+thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.8125rem;
+    color: white !important;
+    padding: var(--spacing-lg) var(--spacing-md);
+    border: none;
+}
+
+thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+    position: relative;
+}
+
+thead th.sortable:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+thead th.sortable i {
+    font-size: 1rem;
+    vertical-align: middle;
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+}
+
+thead th.sortable:hover i {
+    opacity: 1;
+}
+
+tbody tr {
+    transition: all var(--transition-fast);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+tbody tr:hover {
+    background-color: var(--primary-50);
+    transform: translateX(4px);
+}
+
+tbody td {
+    padding: var(--spacing-md);
+    color: var(--gray-800);
+}
+
+tbody td a {
+    color: var(--primary-600);
+    font-weight: 500;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+tbody td a:hover {
+    color: var(--primary-800);
+    text-decoration: underline;
+}
+
+/* Chips/Badges */
+.chip {
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.chip.high {
+    background: linear-gradient(135deg, var(--accent-red-light) 0%, var(--accent-red) 100%);
+    color: white;
+}
+
+.chip.medium {
+    background: linear-gradient(135deg, var(--accent-orange-light) 0%, var(--accent-orange) 100%);
+    color: white;
+}
+
+.chip.low {
+    background: linear-gradient(135deg, var(--accent-green-light) 0%, var(--accent-green) 100%);
+    color: white;
+}
+
+/* Score Bar (for Low Engagement) */
+.score-bar-container {
+    width: 100%;
+    height: 8px;
+    background-color: var(--gray-200);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    position: relative;
+}
+
+.score-bar {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width var(--transition-slow);
+    position: relative;
+}
+
+.score-bar.high {
+    background: linear-gradient(90deg, var(--accent-red) 0%, var(--accent-red-dark) 100%);
+}
+
+.score-bar.medium {
+    background: linear-gradient(90deg, var(--accent-orange) 0%, var(--accent-orange-dark) 100%);
+}
+
+.score-bar.low {
+    background: linear-gradient(90deg, var(--accent-green) 0%, var(--accent-green-dark) 100%);
+}
+
+.score-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-top: var(--spacing-xs);
+    display: block;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-3xl) var(--spacing-xl);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--gray-400);
+    margin-bottom: var(--spacing-lg);
+    display: block;
+}
+
+.empty-state h5 {
+    color: var(--gray-600);
+    font-weight: 300;
+    margin-bottom: var(--spacing-sm);
+}
+
+.empty-state p {
+    color: var(--gray-500);
+}
+
+/* Responsive Design */
+@media only screen and (max-width: 992px) {
+    .analysis-header h3 {
+        font-size: 1.875rem;
+        flex-direction: column;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+    }
+
+    .export-buttons {
+        justify-content: center;
+    }
+}
+
+@media only screen and (max-width: 600px) {
+    .analysis-header {
+        padding: var(--spacing-xl) 0;
+    }
+
+    .analysis-header h3 {
+        font-size: 1.5rem;
+    }
+
+    .stat-card {
+        padding: var(--spacing-lg);
+    }
+
+    .stat-number {
+        font-size: 2rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+    }
+
+    .form-card .card-content,
+    .table-card .card-content {
+        padding: var(--spacing-lg);
+    }
+
+    thead th {
+        font-size: 0.75rem;
+        padding: var(--spacing-md) var(--spacing-sm);
+    }
+
+    tbody td {
+        padding: var(--spacing-sm);
+        font-size: 0.875rem;
+    }
+}
+
+/* Toast Notifications */
+.toast {
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-weight: 500;
+}
+
+/* Button States */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Helper Text */
+.helper-text {
+    color: var(--gray-500);
+    font-size: 0.875rem;
+}
+
+/* Input Field Enhancements */
+.input-field .prefix {
+    color: var(--primary-500);
+}
+
+.input-field .prefix ~ input,
+.input-field .prefix ~ textarea {
+    width: calc(100% - 3rem);
+    margin-left: 3rem;
+}
+
+.input-field input:focus ~ .prefix,
+.input-field textarea:focus ~ .prefix {
+    color: var(--primary-700);
+}
