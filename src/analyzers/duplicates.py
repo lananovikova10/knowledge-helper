@@ -1,9 +1,12 @@
 """Duplicate detection analyzer for finding similar/duplicate articles"""
 
-from typing import List, Tuple, Optional
+from __future__ import annotations
+from typing import List, Tuple, Optional, Callable, TYPE_CHECKING
 from datetime import datetime
 from dataclasses import dataclass
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 
 from ..api.client import YouTrackClient
 from ..models.article import Article
@@ -22,6 +25,123 @@ try:
 except ImportError:
     SKLEARN_AVAILABLE = False
     print("Warning: scikit-learn not installed. Content similarity will be limited.")
+
+
+def _compare_article_chunk(
+    article1: Article,
+    other_articles: List[Article],
+    words1: set,
+    other_word_sets: List[set],
+    title_weight: float,
+    content_weight: float
+) -> List[DuplicatePair]:
+    """
+    Compare one article against a chunk of other articles (for parallel processing)
+
+    This function must be at module level for ProcessPoolExecutor to pickle it.
+
+    Args:
+        article1: Article to compare
+        other_articles: List of articles to compare against
+        words1: Pre-computed word set for article1's title
+        other_word_sets: Pre-computed word sets for other articles' titles
+        title_weight: Weight for title similarity
+        content_weight: Weight for content similarity
+
+    Returns:
+        List of DuplicatePair objects found
+    """
+    pairs = []
+
+    for idx, article2 in enumerate(other_articles):
+        words2 = other_word_sets[idx]
+
+        # Quick filter: if titles share less than 30% words, skip
+        overlap = len(words1 & words2)
+        min_words = min(len(words1), len(words2))
+
+        if min_words > 0 and overlap / min_words < 0.3:
+            continue
+
+        # Calculate title similarity
+        title_sim = _calculate_title_similarity_static(article1.summary, article2.summary)
+
+        if title_sim < 0.4:
+            continue
+
+        # Calculate content similarity
+        content_sim = _calculate_content_similarity_static(article1.summary, article2.summary)
+
+        # Calculate overall confidence
+        confidence = title_weight * title_sim + content_weight * content_sim
+
+        if confidence >= 0.3:
+            reasons = []
+            if title_sim > 0.9:
+                reasons.append("Very similar titles")
+            elif title_sim > 0.7:
+                reasons.append("Similar titles")
+
+            if content_sim > 0.8:
+                reasons.append("Very similar content")
+            elif content_sim > 0.5:
+                reasons.append("Similar content")
+
+            pair = DuplicatePair(
+                article1=article1,
+                article2=article2,
+                confidence_score=confidence,
+                title_similarity=title_sim,
+                content_similarity=content_sim,
+                reasons=reasons if reasons else ["Low similarity"]
+            )
+            pairs.append(pair)
+
+    return pairs
+
+
+def _calculate_title_similarity_static(title1: str, title2: str) -> float:
+    """Static version of title similarity for parallel processing"""
+    title1 = title1.lower().strip()
+    title2 = title2.lower().strip()
+
+    if title1 == title2:
+        return 1.0
+
+    if RAPIDFUZZ_AVAILABLE:
+        similarity = fuzz.token_sort_ratio(title1, title2) / 100.0
+        return similarity
+    else:
+        # Fallback: word overlap
+        words1 = set(title1.split())
+        words2 = set(title2.split())
+        if words1 and words2:
+            overlap = len(words1 & words2) / max(len(words1), len(words2))
+            return overlap
+        return 0.0
+
+
+def _calculate_content_similarity_static(text1: str, text2: str) -> float:
+    """Static version of content similarity for parallel processing"""
+    if not SKLEARN_AVAILABLE:
+        words1 = set(text1.lower().split())
+        words2 = set(text2.lower().split())
+        if words1 and words2:
+            overlap = len(words1 & words2) / max(len(words1), len(words2))
+            return overlap
+        return 0.0
+
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        texts = [text1, text2]
+        vectorizer = TfidfVectorizer(lowercase=True, stop_words='english', ngram_range=(1, 2))
+        tfidf_matrix = vectorizer.fit_transform(texts)
+        similarity_matrix = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])
+        return float(similarity_matrix[0][0])
+    except Exception:
+        return 0.0
 
 
 @dataclass
@@ -167,7 +287,7 @@ class DuplicateDetector:
 
     def _find_duplicates(self, articles: List[Article]) -> List[DuplicatePair]:
         """
-        Find all duplicate pairs in a list of articles
+        Find all duplicate pairs in a list of articles with parallel processing
 
         Args:
             articles: List of articles to compare
@@ -176,6 +296,26 @@ class DuplicateDetector:
             List of DuplicatePair objects
         """
         duplicate_pairs = []
+        n = len(articles)
+
+        print(f"Comparing {n} articles ({n * (n - 1) // 2} pairs)...")
+
+        # For small datasets, use sequential processing
+        if n < 50:
+            return self._find_duplicates_sequential(articles)
+
+        # For larger datasets, use parallel processing
+        return self._find_duplicates_parallel(articles)
+
+    def _find_duplicates_sequential(self, articles: List[Article]) -> List[DuplicatePair]:
+        """Sequential duplicate detection with early filtering"""
+        duplicate_pairs = []
+
+        # Pre-compute title word sets for fast filtering
+        title_word_sets = []
+        for article in articles:
+            words = set(article.summary.lower().split())
+            title_word_sets.append(words)
 
         # Compare each article with every other article
         for i in range(len(articles)):
@@ -183,8 +323,22 @@ class DuplicateDetector:
                 article1 = articles[i]
                 article2 = articles[j]
 
+                # Quick filter: if titles share less than 30% words, skip
+                words1 = title_word_sets[i]
+                words2 = title_word_sets[j]
+                overlap = len(words1 & words2)
+                min_words = min(len(words1), len(words2))
+
+                if min_words > 0 and overlap / min_words < 0.3:
+                    continue  # Skip this pair, too different
+
                 # Calculate similarity scores
                 title_sim = self._calculate_title_similarity(article1, article2)
+
+                # Early exit if title similarity is too low
+                if title_sim < 0.4:
+                    continue
+
                 content_sim = self._calculate_content_similarity(article1, article2)
 
                 # Calculate overall confidence score
@@ -218,6 +372,120 @@ class DuplicateDetector:
                     duplicate_pairs.append(pair)
 
         return duplicate_pairs
+
+    def _find_duplicates_parallel(self, articles: List[Article]) -> List[DuplicatePair]:
+        """Parallel duplicate detection using threading (safer for web contexts)"""
+        duplicate_pairs = []
+        n = len(articles)
+
+        # Pre-compute title word sets
+        title_word_sets = []
+        for article in articles:
+            words = set(article.summary.lower().split())
+            title_word_sets.append(words)
+
+        # Create batches of articles to process
+        batch_size = max(10, n // 10)  # Process in ~10 batches
+        batches = []
+
+        for i in range(0, n, batch_size):
+            batch_end = min(i + batch_size, n)
+            batches.append((i, batch_end))
+
+        print(f"Processing {len(batches)} batches with threading...")
+
+        # Use thread pool (better for I/O and web contexts)
+        max_workers = min(4, len(batches))
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit batch processing tasks
+            futures = []
+            for batch_start, batch_end in batches:
+                future = executor.submit(
+                    self._process_article_batch,
+                    articles,
+                    title_word_sets,
+                    batch_start,
+                    batch_end
+                )
+                futures.append(future)
+
+            # Collect results as they complete
+            completed = 0
+            for future in as_completed(futures):
+                try:
+                    pairs = future.result()
+                    duplicate_pairs.extend(pairs)
+                    completed += 1
+                    print(f"Completed batch {completed}/{len(batches)}")
+                except Exception as e:
+                    print(f"Error in batch processing: {e}")
+
+        return duplicate_pairs
+
+    def _process_article_batch(
+        self,
+        articles: List[Article],
+        title_word_sets: List[set],
+        batch_start: int,
+        batch_end: int
+    ) -> List[DuplicatePair]:
+        """Process a batch of articles for duplicate detection"""
+        pairs = []
+        n = len(articles)
+
+        for i in range(batch_start, batch_end):
+            article1 = articles[i]
+            words1 = title_word_sets[i]
+
+            for j in range(i + 1, n):
+                article2 = articles[j]
+                words2 = title_word_sets[j]
+
+                # Quick filter
+                overlap = len(words1 & words2)
+                min_words = min(len(words1), len(words2))
+
+                if min_words > 0 and overlap / min_words < 0.3:
+                    continue
+
+                # Calculate similarities
+                title_sim = self._calculate_title_similarity(article1, article2)
+
+                if title_sim < 0.4:
+                    continue
+
+                content_sim = self._calculate_content_similarity(article1, article2)
+
+                # Calculate confidence
+                confidence = (
+                    self.title_weight * title_sim +
+                    self.content_weight * content_sim
+                )
+
+                if confidence >= 0.3:
+                    reasons = []
+                    if title_sim > 0.9:
+                        reasons.append("Very similar titles")
+                    elif title_sim > 0.7:
+                        reasons.append("Similar titles")
+
+                    if content_sim > 0.8:
+                        reasons.append("Very similar content")
+                    elif content_sim > 0.5:
+                        reasons.append("Similar content")
+
+                    pair = DuplicatePair(
+                        article1=article1,
+                        article2=article2,
+                        confidence_score=confidence,
+                        title_similarity=title_sim,
+                        content_similarity=content_sim,
+                        reasons=reasons if reasons else ["Low similarity"]
+                    )
+                    pairs.append(pair)
+
+        return pairs
 
     def _calculate_title_similarity(self, article1: Article, article2: Article) -> float:
         """
