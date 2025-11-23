@@ -1,0 +1,20 @@
+# YouTrack Knowledge Base Helper Configuration
+
+# Analysis thresholds
+analysis:
+  # Number of days after which an article is considered stale
+  stale_threshold_days: 180
+
+  # Batch size for fetching articles from API
+  batch_size: 100
+
+# Output settings
+output:
+  # Default format for reports: table, json, csv
+  format: table
+
+  # Directory for saving report files
+  reports_dir: ./reports
+
+  # Show detailed information in reports
+  verbose: false
