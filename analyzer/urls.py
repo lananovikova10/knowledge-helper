@@ -9,4 +9,6 @@ urlpatterns = [
     path('api/analyze-stale/', views.analyze_stale_content, name='analyze_stale_content'),
     path('low-engagement/', views.low_engagement, name='low_engagement'),
     path('api/analyze-low-engagement/', views.analyze_low_engagement, name='analyze_low_engagement'),
+    path('duplicates/', views.duplicates, name='duplicates'),
+    path('api/analyze-duplicates/', views.analyze_duplicates, name='analyze_duplicates'),
 ]

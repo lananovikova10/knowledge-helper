@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.api.client import YouTrackClient, YouTrackAPIError
 from src.analyzers.stale_content import StaleContentAnalyzer
 from src.analyzers.low_engagement import LowEngagementAnalyzer
+from src.analyzers.duplicates import DuplicateDetector
 
 
 def index(request):
@@ -209,6 +210,83 @@ def analyze_low_engagement(request):
             'low_engagement_percentage': round(report.low_engagement_percentage, 2),
             'generated_at': report.generated_at.isoformat(),
             'articles': articles_data,
+        }
+
+        return JsonResponse(response_data)
+
+    except YouTrackAPIError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+
+
+def duplicates(request):
+    """Duplicate detection page"""
+    # Check if credentials are set
+    youtrack_url = request.session.get('youtrack_url')
+    youtrack_token = request.session.get('youtrack_token')
+
+    if not youtrack_url or not youtrack_token:
+        messages.error(request, 'Please configure your YouTrack credentials first')
+        return redirect('credentials')
+
+    context = {
+        'youtrack_url': youtrack_url,
+    }
+    return render(request, 'analyzer/duplicates.html', context)
+
+
+def analyze_duplicates(request):
+    """API endpoint to perform duplicate detection"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    # Check credentials
+    youtrack_url = request.session.get('youtrack_url')
+    youtrack_token = request.session.get('youtrack_token')
+
+    if not youtrack_url or not youtrack_token:
+        return JsonResponse({'error': 'Credentials not configured'}, status=401)
+
+    # Get parameters
+    project_id = request.POST.get('project_id', '').strip()
+    confidence_threshold = float(request.POST.get('confidence_threshold', 0.75))
+
+    if not project_id:
+        return JsonResponse({'error': 'Project ID is required'}, status=400)
+
+    try:
+        # Create client and detector
+        client = YouTrackClient(youtrack_url, youtrack_token)
+        detector = DuplicateDetector(client, confidence_threshold=confidence_threshold)
+
+        # Run analysis
+        report = detector.analyze(project_id)
+
+        # Convert to JSON-serializable format
+        pairs_data = []
+        for pair in report.get_sorted_pairs():
+            pairs_data.append({
+                'article1_id': pair.article1.id,
+                'article1_title': pair.article1.summary,
+                'article1_views': pair.article1.view_count,
+                'article2_id': pair.article2.id,
+                'article2_title': pair.article2.summary,
+                'article2_views': pair.article2.view_count,
+                'confidence_score': round(pair.confidence_score, 3),
+                'title_similarity': round(pair.title_similarity, 3),
+                'content_similarity': round(pair.content_similarity, 3),
+                'reasons': pair.reasons
+            })
+
+        response_data = {
+            'project_id': report.project_id,
+            'confidence_threshold': report.confidence_threshold,
+            'total_articles': report.total_articles,
+            'duplicate_count': report.duplicate_count,
+            'articles_with_duplicates': report.articles_with_duplicates,
+            'generated_at': report.generated_at.isoformat(),
+            'duplicate_pairs': pairs_data,
         }
 
         return JsonResponse(response_data)

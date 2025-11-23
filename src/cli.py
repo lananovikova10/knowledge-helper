@@ -10,6 +10,7 @@ from .config import Config
 from .api.client import YouTrackClient, YouTrackAPIError
 from .analyzers.stale_content import StaleContentAnalyzer
 from .analyzers.low_engagement import LowEngagementAnalyzer
+from .analyzers.duplicates import DuplicateDetector
 
 
 def format_table_output(report):
@@ -278,6 +279,99 @@ def cmd_low_engagement(args, config: Config):
     return 0
 
 
+def cmd_duplicates(args, config: Config):
+    """Handle duplicates command"""
+    # Initialize API client
+    client = YouTrackClient(config.youtrack_base_url, config.youtrack_token)
+
+    # Test connection
+    print("Testing connection to YouTrack...")
+    if not client.test_connection():
+        print("ERROR: Failed to connect to YouTrack. Please check your credentials.")
+        return 1
+
+    print("✓ Connected successfully\n")
+
+    # Get parameters from args
+    confidence_threshold = args.threshold if hasattr(args, 'threshold') and args.threshold else 0.75
+
+    # Initialize detector
+    detector = DuplicateDetector(client, confidence_threshold=confidence_threshold)
+
+    # Run analysis
+    try:
+        report = detector.analyze(args.project_id, batch_size=config.batch_size)
+    except YouTrackAPIError as e:
+        print(f"ERROR: {e}")
+        return 1
+
+    # Display summary
+    print(f"\n{'='*70}")
+    print(f"Duplicate Detection Report")
+    print(f"{'='*70}")
+    print(f"Project ID: {report.project_id}")
+    print(f"Confidence threshold: {report.confidence_threshold:.0%}")
+    print(f"Generated: {report.generated_at.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"\nTotal articles: {report.total_articles}")
+    print(f"Duplicate pairs found: {report.duplicate_count}")
+    print(f"Articles with duplicates: {report.articles_with_duplicates}")
+    print(f"{'='*70}\n")
+
+    if not report.duplicate_pairs:
+        print("✓ No duplicate articles found!")
+        return 0
+
+    # Format output
+    output_format = args.format if args.format else config.output_format
+
+    if output_format == "json":
+        import json
+        data = {
+            "project_id": report.project_id,
+            "confidence_threshold": report.confidence_threshold,
+            "total_articles": report.total_articles,
+            "duplicate_count": report.duplicate_count,
+            "articles_with_duplicates": report.articles_with_duplicates,
+            "generated_at": report.generated_at.isoformat(),
+            "duplicate_pairs": [
+                {
+                    "article1_id": pair.article1.id,
+                    "article1_title": pair.article1.summary,
+                    "article2_id": pair.article2.id,
+                    "article2_title": pair.article2.summary,
+                    "confidence_score": round(pair.confidence_score, 3),
+                    "title_similarity": round(pair.title_similarity, 3),
+                    "content_similarity": round(pair.content_similarity, 3),
+                    "reasons": pair.reasons
+                }
+                for pair in report.get_sorted_pairs()
+            ]
+        }
+        output = json.dumps(data, indent=2)
+        print(output)
+    else:  # table format
+        headers = ["Article 1", "Article 2", "Confidence", "Title Sim", "Content Sim", "Reasons"]
+        rows = []
+
+        for pair in report.get_sorted_pairs()[:20]:  # Show top 20
+            rows.append([
+                f"{pair.article1.id}\n{pair.article1.summary[:40]}...",
+                f"{pair.article2.id}\n{pair.article2.summary[:40]}...",
+                f"{pair.confidence_score:.1%}",
+                f"{pair.title_similarity:.1%}",
+                f"{pair.content_similarity:.1%}",
+                "\n".join(pair.reasons[:2])  # Show first 2 reasons
+            ])
+
+        print(tabulate(rows, headers=headers, tablefmt="grid"))
+
+        if report.duplicate_count > 20:
+            print(f"\n... and {report.duplicate_count - 20} more duplicate pairs")
+            print(f"Use --format json to see all results")
+
+    return 0
+
+
 def cmd_test_connection(args, config: Config):
     """Handle test-connection command"""
     print("Testing connection to YouTrack...")
@@ -395,6 +489,26 @@ Configuration:
         help="Save report to file instead of printing"
     )
 
+    # Duplicate detection command
+    duplicates_parser = subparsers.add_parser(
+        "duplicates",
+        help="Detect duplicate or similar articles"
+    )
+    duplicates_parser.add_argument(
+        "project_id",
+        help="YouTrack project ID (e.g., HE for Help)"
+    )
+    duplicates_parser.add_argument(
+        "--threshold",
+        type=float,
+        help="Confidence threshold (0.0-1.0, default: 0.75). Higher = stricter matching"
+    )
+    duplicates_parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        help="Output format (default: table)"
+    )
+
     # Test connection command
     test_parser = subparsers.add_parser(
         "test-connection",
@@ -429,6 +543,8 @@ Configuration:
         return cmd_stale_content(args, config)
     elif args.command == "low-engagement":
         return cmd_low_engagement(args, config)
+    elif args.command == "duplicates":
+        return cmd_duplicates(args, config)
     elif args.command == "test-connection":
         return cmd_test_connection(args, config)
 
