@@ -335,7 +335,11 @@ def analyze_priority(request):
 
     # Get parameters
     project_id = request.POST.get('project_id', '').strip()
-    min_priority = request.POST.get('min_priority', None)
+    min_priority = request.POST.get('min_priority', '').strip()
+
+    # Convert empty string to None for "All Priorities"
+    if not min_priority:
+        min_priority = None
 
     if not project_id:
         return JsonResponse({'error': 'Project ID is required'}, status=400)
