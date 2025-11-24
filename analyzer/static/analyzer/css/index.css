@@ -93,6 +93,16 @@
     color: var(--accent-purple-light);
 }
 
+/* Feature Card - Red (Priority Queue) */
+.feature-card-red {
+    background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+    color: white;
+}
+
+.feature-card-red::before {
+    color: #ffcdd2;
+}
+
 /* Feature Card - Grey (Coming Soon) */
 .feature-card-grey {
     background: linear-gradient(135deg, var(--gray-600) 0%, var(--gray-700) 100%);

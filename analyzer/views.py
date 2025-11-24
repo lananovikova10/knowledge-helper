@@ -13,6 +13,8 @@ from src.api.client import YouTrackClient, YouTrackAPIError
 from src.analyzers.stale_content import StaleContentAnalyzer
 from src.analyzers.low_engagement import LowEngagementAnalyzer
 from src.analyzers.duplicates import DuplicateDetector
+from src.analyzers.priority import ArticleRiskAnalyzer
+from src.models.article import Article
 
 
 def index(request):
@@ -293,6 +295,69 @@ def analyze_duplicates(request):
             'duplicate_pairs': pairs_data,
             'youtrack_base_url': youtrack_url.rstrip('/api').rstrip('/'),
         }
+
+        return JsonResponse(response_data)
+
+    except YouTrackAPIError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+
+
+def priority_queue(request):
+    """Priority Queue dashboard page"""
+    # Check if credentials are set
+    youtrack_url = request.session.get('youtrack_url')
+    youtrack_token = request.session.get('youtrack_token')
+
+    if not youtrack_url or not youtrack_token:
+        messages.error(request, 'Please configure your YouTrack credentials first')
+        return redirect('credentials')
+
+    context = {
+        'youtrack_url': youtrack_url,
+    }
+    return render(request, 'analyzer/priority_queue.html', context)
+
+
+@ratelimit(key='user_or_ip', rate='10/m', method='POST')
+def analyze_priority(request):
+    """API endpoint to perform priority analysis"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    # Check credentials
+    youtrack_url = request.session.get('youtrack_url')
+    youtrack_token = request.session.get('youtrack_token')
+
+    if not youtrack_url or not youtrack_token:
+        return JsonResponse({'error': 'Credentials not configured'}, status=401)
+
+    # Get parameters
+    project_id = request.POST.get('project_id', '').strip()
+    min_priority = request.POST.get('min_priority', None)
+
+    if not project_id:
+        return JsonResponse({'error': 'Project ID is required'}, status=400)
+
+    try:
+        # Create client and fetch articles
+        client = YouTrackClient(youtrack_url, youtrack_token)
+        raw_articles = client.get_all_articles(project_id)
+
+        # Convert raw API responses to Article objects
+        articles = [
+            Article.from_api_response(data, project_id=project_id)
+            for data in raw_articles
+        ]
+
+        # Create analyzer and run analysis
+        analyzer = ArticleRiskAnalyzer(articles)
+        report = analyzer.analyze(min_priority=min_priority)
+
+        # Add YouTrack base URL for article links
+        response_data = report.to_dict()
+        response_data['youtrack_base_url'] = youtrack_url.rstrip('/api').rstrip('/')
 
         return JsonResponse(response_data)
 

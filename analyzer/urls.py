@@ -11,4 +11,6 @@ urlpatterns = [
     path('api/analyze-low-engagement/', views.analyze_low_engagement, name='analyze_low_engagement'),
     path('duplicates/', views.duplicates, name='duplicates'),
     path('api/analyze-duplicates/', views.analyze_duplicates, name='analyze_duplicates'),
+    path('priority-queue/', views.priority_queue, name='priority_queue'),
+    path('api/analyze-priority/', views.analyze_priority, name='analyze_priority'),
 ]
