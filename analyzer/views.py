@@ -14,7 +14,9 @@ from src.analyzers.stale_content import StaleContentAnalyzer
 from src.analyzers.low_engagement import LowEngagementAnalyzer
 from src.analyzers.duplicates import DuplicateDetector
 from src.analyzers.priority import ArticleRiskAnalyzer
+from src.analyzers.trending import TrendingAnalyzer
 from src.models.article import Article
+from analyzer.services import sync_articles_to_database
 
 
 def index(request):
@@ -362,6 +364,108 @@ def analyze_priority(request):
         # Add YouTrack base URL for article links
         response_data = report.to_dict()
         response_data['youtrack_base_url'] = youtrack_url.rstrip('/api').rstrip('/')
+
+        return JsonResponse(response_data)
+
+    except YouTrackAPIError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Unexpected error: {str(e)}'}, status=500)
+
+
+def trending(request):
+    """Trending analysis page"""
+    # Check if credentials are set
+    youtrack_url = request.session.get('youtrack_url')
+    youtrack_token = request.session.get('youtrack_token')
+
+    if not youtrack_url or not youtrack_token:
+        messages.error(request, 'Please configure your YouTrack credentials first')
+        return redirect('credentials')
+
+    context = {
+        'youtrack_url': youtrack_url,
+    }
+    return render(request, 'analyzer/trending.html', context)
+
+
+@ratelimit(key='user_or_ip', rate='10/m', method='POST')
+def analyze_trending(request):
+    """API endpoint to perform trending analysis"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    # Check credentials
+    youtrack_url = request.session.get('youtrack_url')
+    youtrack_token = request.session.get('youtrack_token')
+
+    if not youtrack_url or not youtrack_token:
+        return JsonResponse({'error': 'Credentials not configured'}, status=401)
+
+    # Get parameters
+    project_id = request.POST.get('project_id', '').strip()
+    recent_days = int(request.POST.get('recent_days', 30))
+    historical_days = int(request.POST.get('historical_days', 90))
+    min_views = int(request.POST.get('min_views', 10))
+    sync_to_db = request.POST.get('sync_to_db', 'true').lower() == 'true'
+
+    if not project_id:
+        return JsonResponse({'error': 'Project ID is required'}, status=400)
+
+    try:
+        # Create client and fetch articles
+        client = YouTrackClient(youtrack_url, youtrack_token)
+        raw_articles = client.get_all_articles(project_id)
+
+        # Convert raw API responses to Article objects
+        articles = [
+            Article.from_api_response(data, project_id=project_id)
+            for data in raw_articles
+        ]
+
+        # Optionally sync to database for historical tracking
+        if sync_to_db:
+            sync_articles_to_database(articles)
+
+        # Create analyzer and run analysis
+        analyzer = TrendingAnalyzer(
+            recent_days=recent_days,
+            historical_days=historical_days,
+            min_views_threshold=min_views
+        )
+        report = analyzer.analyze(articles, project_id)
+
+        # Convert to JSON-serializable format
+        def trending_article_to_dict(ta):
+            return {
+                'article_id': ta.article.id,
+                'summary': ta.article.summary,
+                'created': ta.article.created.isoformat(),
+                'updated': ta.article.updated.isoformat() if ta.article.updated else None,
+                'total_views': ta.article.view_count,
+                'recent_views': ta.recent_views,
+                'historical_views': ta.historical_views,
+                'recent_rate': round(ta.recent_rate, 2),
+                'historical_rate': round(ta.historical_rate, 2),
+                'velocity': round(ta.velocity, 2) if ta.velocity != float('inf') else 'infinite',
+                'trend_direction': ta.trend_direction,
+                'trend_strength': ta.trend_strength,
+                'percentage_change': round(ta.percentage_change, 1),
+            }
+
+        response_data = {
+            'project_id': report.project_id,
+            'recent_days': report.recent_days,
+            'historical_days': report.historical_days,
+            'total_articles': report.total_articles,
+            'trending_up_count': report.trending_up_count,
+            'trending_down_count': report.trending_down_count,
+            'stable_count': report.stable_count,
+            'trending_up': [trending_article_to_dict(ta) for ta in report.trending_up[:50]],
+            'trending_down': [trending_article_to_dict(ta) for ta in report.trending_down[:50]],
+            'generated_at': report.generated_at.isoformat(),
+            'youtrack_base_url': youtrack_url.rstrip('/api').rstrip('/'),
+        }
 
         return JsonResponse(response_data)
 

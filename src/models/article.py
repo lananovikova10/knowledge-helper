@@ -1,7 +1,7 @@
 """Article data models"""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 
 
@@ -15,6 +15,7 @@ class Article:
     updated: Optional[datetime] = None
     view_count: int = 0
     project_id: Optional[str] = None
+    view_timestamps: Optional[List[datetime]] = None
 
     @classmethod
     def from_api_response(cls, data: dict, project_id: Optional[str] = None) -> 'Article':
@@ -35,8 +36,10 @@ class Article:
         updated_ts = data.get('updated')
         updated = cls._parse_timestamp(updated_ts) if updated_ts else None
 
-        # Extract view count from viewCounters structure
-        view_count = cls._extract_view_count(data.get('viewCounters', {}))
+        # Extract view count and timestamps from viewCounters structure
+        view_counters = data.get('viewCounters', {})
+        view_count = cls._extract_view_count(view_counters)
+        view_timestamps = cls._extract_view_timestamps(view_counters)
 
         return cls(
             id=data.get('id', ''),
@@ -44,7 +47,8 @@ class Article:
             created=created,
             updated=updated,
             view_count=view_count,
-            project_id=project_id
+            project_id=project_id,
+            view_timestamps=view_timestamps
         )
 
     @staticmethod
@@ -86,6 +90,33 @@ class Article:
         views = view_counters.get('views', [])
         return len(views) if isinstance(views, list) else 0
 
+    @staticmethod
+    def _extract_view_timestamps(view_counters: dict) -> Optional[List[datetime]]:
+        """
+        Extract individual view timestamps from viewCounters structure
+
+        Args:
+            view_counters: ViewCounters dictionary from API
+
+        Returns:
+            List of datetime objects representing individual view timestamps, or None if no views
+        """
+        if not view_counters or 'views' not in view_counters:
+            return None
+
+        views = view_counters.get('views', [])
+        if not isinstance(views, list) or len(views) == 0:
+            return None
+
+        timestamps = []
+        for view in views:
+            if isinstance(view, dict) and 'created' in view:
+                timestamp = view.get('created')
+                if timestamp:
+                    timestamps.append(datetime.fromtimestamp(timestamp / 1000))
+
+        return timestamps if timestamps else None
+
     def days_since_update(self) -> int:
         """
         Calculate number of days since last update
@@ -108,6 +139,83 @@ class Article:
             True if article hasn't been updated for threshold_days
         """
         return self.days_since_update() >= threshold_days
+
+    def get_views_in_date_range(self, start_date: datetime, end_date: datetime) -> int:
+        """
+        Count views within a specific date range
+
+        Args:
+            start_date: Start of date range (inclusive)
+            end_date: End of date range (inclusive)
+
+        Returns:
+            Number of views within the date range
+        """
+        if not self.view_timestamps:
+            return 0
+
+        # Normalize dates to start/end of day
+        start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        count = 0
+        for timestamp in self.view_timestamps:
+            if start <= timestamp <= end:
+                count += 1
+
+        return count
+
+    def get_recent_views(self, days: int) -> int:
+        """
+        Count views in the last N days
+
+        Args:
+            days: Number of days to look back
+
+        Returns:
+            Number of views in the last N days
+        """
+        if not self.view_timestamps:
+            return 0
+
+        cutoff_date = datetime.now() - timedelta(days=days)
+
+        count = 0
+        for timestamp in self.view_timestamps:
+            if timestamp >= cutoff_date:
+                count += 1
+
+        return count
+
+    def calculate_view_velocity(self, recent_days: int = 30, historical_days: int = 90) -> float:
+        """
+        Calculate view velocity (change in view rate)
+
+        Args:
+            recent_days: Number of recent days to compare (default: 30)
+            historical_days: Number of historical days to compare against (default: 90)
+
+        Returns:
+            View velocity ratio (recent_rate / historical_rate)
+            > 1.0 = increasing views (trending up)
+            < 1.0 = decreasing views (trending down)
+            = 1.0 = stable
+        """
+        if not self.view_timestamps:
+            return 0.0
+
+        recent_views = self.get_recent_views(recent_days)
+        historical_views = self.get_recent_views(historical_days)
+
+        # Calculate views per day
+        recent_rate = recent_views / recent_days
+        historical_rate = historical_views / historical_days
+
+        # Avoid division by zero
+        if historical_rate == 0:
+            return 1.0 if recent_rate == 0 else float('inf')
+
+        return recent_rate / historical_rate
 
     def __str__(self):
         """Human-readable string representation"""
